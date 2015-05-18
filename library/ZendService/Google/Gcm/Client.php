@@ -138,4 +138,51 @@ class Client
 
         return new Response($response, $message);
     }
+
+
+    /**
+     * Send Message
+     *
+     * @param Mesage $message
+     * @return Response
+     * @throws Exception\RuntimeException
+     */
+    public function sendPayload($payload)
+    {
+        $client = $this->getHttpClient();
+        $client->setUri(self::SERVER_URI);
+        $headers = $client->getRequest()->getHeaders();
+        $headers->addHeaderLine('Authorization', 'key=' . $this->getApiKey());
+
+        $response = $client->setHeaders($headers)
+            ->setMethod('POST')
+            ->setRawBody($payload)
+            ->setEncType('application/json')
+            ->send();
+
+        switch ($response->getStatusCode()) {
+            case 500:
+                throw new Exception\RuntimeException('500 Internal Server Error');
+                break;
+            case 503:
+                $exceptionMessage = '503 Server Unavailable';
+                if ($retry = $response->getHeaders()->get('Retry-After')) {
+                    $exceptionMessage .= '; Retry After: ' . $retry;
+                }
+                throw new Exception\RuntimeException($exceptionMessage);
+                break;
+            case 401:
+                throw new Exception\RuntimeException('401 Forbidden; Authentication Error');
+                break;
+            case 400:
+                throw new Exception\RuntimeException('400 Bad Request; invalid message');
+                break;
+        }
+
+        if (!$response = Json::decode($response->getBody(), Json::TYPE_ARRAY)) {
+            throw new Exception\RuntimeException('Response body did not contain a valid JSON response');
+        }
+
+        return new Response($response);//, $message);
+    }
 }

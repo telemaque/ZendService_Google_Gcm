@@ -320,6 +320,7 @@ class Message
         if ($this->dryRun) {
             $json['dry_run'] = $this->dryRun;
         }
+
         return Json::encode($json);
     }
 }
